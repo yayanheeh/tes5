@@ -59,7 +59,7 @@ function buildContext(db, nextCommand, callback) {
 
 // this method runs the commands of a mongo shell script (e.g. initdb.js)
 exports.runScriptOnDatabase = function(script, db, callback) {
-  var commands = script.toString().split(/[\;\n]/);
+  var commands = script.toString().split(';'); // warning: some commands are multi-line
   async.eachSeries(commands, function(command, nextCommand){
     command = command.trim();
     if (!command || /^\/\//.test(command) || /^\/\*.*\*\/$/.test(command)) {
