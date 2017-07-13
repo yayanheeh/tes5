@@ -150,12 +150,16 @@ function init() {
 		}
 	console.log("Starting web server with params:", params);
 	require('./app/models/mongodb.js').init(function(err, db) {
+		var initScript = '../whydDB/initdb.js';
+		console.log('Applying db init script:', initScript, '...');
 		var mongodb = this;
+		mongodb.runShellScript(require('fs').readFileSync(initScript), function() {
 			mongodb.cacheCollections(function() {
 				mongodb.cacheUsers(function() {
 					start();
 				});
 			})
+		});
 	});
 }
 
