@@ -1,43 +1,46 @@
 var vm = require('vm');
 var async = require('async');
 
-function makeCallback(prefix, callback) {
-  return function(err, res) {
-    //console.log(prefix, '=>', err ? err.errmsg : 'ok');
-    callback();
-  };
-}
+const VERBOSE = false; // true to display debug logs (for diagnostics and testing)
+const LOG_PREFIX = '[mongo shell]';
 
 function buildContext(db, nextCommand, callback) {
 
+  function makeCallback(prefix, callback) {
+    return function(err, res) {
+      VERBOSE && console.log(LOG_PREFIX, 'db.' + prefix, '=>', err ? err.errmsg : 'ok');
+      nextCommand();
+    };
+  }
+
+  var context = {
+    print: function() {
+      console.log.apply(console, [LOG_PREFIX].concat(Array.prototype.slice.call(arguments)));
+      nextCommand();
+    },
+    db: {
+      createCollection: function(colName) {
+        db.createCollection(colName, {}, makeCallback('db.createCollection'));
+      },
+    },
+  };
+
+  function wrapCollectionMethod(col, methodName, colName) {
+    return function() {
+      return col[methodName].apply(col, Array.prototype.slice.call(arguments).concat([
+        makeCallback(colName + '.' + methodName)
+      ]));
+    };
+  }
+
   function wrapCollection(colName, callback, commandCallback) {
     db.collection(colName, function(err, col) {
-      if (err) {
-        callback(err);
-        return;
-      }
-      callback(null, {
-        dropIndex: function() {
-          var args = Array.prototype.slice.call(arguments).concat([
-            makeCallback(colName + '.dropIndex', commandCallback)
-          ]);
-          return col.dropIndex.apply(col, args)
-        },
-        ensureIndex: function() {
-          var args = Array.prototype.slice.call(arguments).concat([
-            makeCallback(colName + '.ensureIndex', commandCallback)
-          ]);
-          return col.ensureIndex.apply(col, args)
-        },
+      callback(err, !err && {
+        dropIndex: wrapCollectionMethod(col, 'dropIndex', colName),
+        ensureIndex: wrapCollectionMethod(col, 'ensureIndex', colName),
       });
     });
   }
-
-  var shellDb = {
-    createCollection: function(colName) {
-      db.createCollection(colName, {}, makeCallback('db.createCollection', nextCommand));
-    },
-  };
 
   db.collections(function(err, collections) {
     if (err) throw err;
@@ -45,18 +48,11 @@ function buildContext(db, nextCommand, callback) {
       // for each collection:
       wrapCollection(colObj.collectionName, function(err, res) {
         if (err) throw err;
-        shellDb[colObj.collectionName] = res;
+        context.db[colObj.collectionName] = res; // mutating the context object
         nextCollection();
       }, nextCommand);
     }, function(err, res) {
-      callback(err, {
-        print: function() {
-          var args = ['[mongo shell]'].concat(Array.prototype.slice.call(arguments));
-          console.log.apply(console, args);
-          nextCommand();
-        },
-        db: shellDb,
-      });
+      callback(err, context);
     });
   });
 }
@@ -67,11 +63,10 @@ exports.runScriptOnDatabase = function(script, db, callback) {
   async.eachSeries(commands, function(command, nextCommand){
     command = command.trim();
     if (!command || /^\/\//.test(command) || /^\/\*.*\*\/$/.test(command)) {
-      //console.log('IGNORE', command);
+      VERBOSE && console.log(LOG_PREFIX, 'IGN', command);
       nextCommand();
-      return;
     } else {
-      //console.log('RUN', command);
+      VERBOSE && console.log(LOG_PREFIX, 'RUN', command);
       buildContext(db, nextCommand, function(err, context) {
         // when all collections are wrapped => run the current command
         if (err) throw(err);
