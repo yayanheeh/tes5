@@ -149,7 +149,14 @@ function init() {
 				params[flag.substr(2)] = process.argv[++i];
 		}
 	console.log("Starting web server with params:", params);
-	require('./app/models/mongodb.js').init(start);
+	require('./app/models/mongodb.js').init(function(err, db) {
+		var mongodb = this;
+			mongodb.cacheCollections(function() {
+				mongodb.cacheUsers(function() {
+					start();
+				});
+			})
+	});
 }
 
 init();
