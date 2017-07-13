@@ -1,5 +1,6 @@
 var vm = require('vm');
 var async = require('async');
+var mongodb = require('mongodb');
 
 const VERBOSE = false; // true to display debug logs (for diagnostics and testing)
 const LOG_PREFIX = '[mongo shell]';
@@ -22,6 +23,16 @@ function buildContext(db, nextCommand, callback) {
       createCollection: function(colName) {
         db.createCollection(colName, {}, makeCallback('db.createCollection'));
       },
+      // + one property per collection will be populated
+    },
+    ObjectId: function(v) {
+      try {
+        return mongodb.ObjectID.createFromHexString(""+v);
+      }
+      catch (e) {
+        console.warn("invalid mongodb object id:" + v);
+        return "invalid_id";
+      }
     },
   };
 
@@ -38,6 +49,7 @@ function buildContext(db, nextCommand, callback) {
       callback(err, !err && {
         dropIndex: wrapCollectionMethod(col, 'dropIndex', colName),
         ensureIndex: wrapCollectionMethod(col, 'ensureIndex', colName),
+        update: wrapCollectionMethod(col, 'update', colName),
       });
     });
   }
