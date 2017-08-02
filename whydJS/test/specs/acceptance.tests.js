@@ -1,9 +1,57 @@
+var fs = require('fs');
+var async = require('async');
 var assert = require('assert');
+var mongodb = require('../../app/models/mongodb.js');
+var child_process = require('child_process');
+
+class AppServer {
+    constructor() {
+        this.child = null;
+    }
+    start(callback) {
+        this.child = child_process.spawn('npm', ['run', 'run']);
+        this.child.stdout.on('data', (data) => {
+            //console.log(`stdout: ${data}`);
+            if (/Server running at/.test(data)) {
+                callback();
+            }
+        });
+        this.child.stderr.on('data', (data) => {
+            //console.log(`stderr: ${data}`);
+            //callback(new Error(data));
+        });
+        this.child.on('close', (code) => {
+            callback(new Error(`child process exited with code ${code}`));
+        });
+    }
+    stop() {
+        this.child.kill();
+        this.child = null;
+    }
+}
+
+var server = new AppServer();
+
+// TODO: make the tests start and restart the server between each test / db init
+// (because of user cache being confused by external db mutations...)
+// the only db mutation that this script should do it drop the database
+
+process.env['MONGODB_DATABASE'] = 'openwhyd_test'; // force use of the test database, even for whydJS app server
+
+process.appParams = {
+	mongoDbHost: process.env['MONGODB_HOST'] || 'localhost',
+	mongoDbPort: process.env['MONGODB_PORT'], // 27017
+	mongoDbAuthUser: process.env['MONGODB_USER'],
+	mongoDbAuthPassword: process.env['MONGODB_PASS'],
+	mongoDbDatabase: process.env['MONGODB_DATABASE'],
+};
 
 var URL_PREFIX = 'http://localhost:8080';
 
-// TODO: make sure that DB is clear
-// mongo openwhyd_test --eval "db.dropDatabase();"
+var DB_INIT_SCRIPTS = [
+	'./config/initdb.js',
+	'./config/initdb_team.js', // inserts ADMIN_USER in db
+];
 
 const ADMIN_USER = {
     email: process.env.WHYD_ADMIN_EMAIL || 'test@openwhyd.org',
@@ -26,13 +74,55 @@ function takeSnapshot() {
     });
 }
 
-before(function() {
-    // make sure that openwhyd/whydjs server is tested against the test database
-    browser.url(URL_PREFIX + `/login?action=login&email=${encodeURIComponent(ADMIN_USER.email)}&md5=${ADMIN_USER.md5}`);
-    browser.url(URL_PREFIX + '/admin/config/config.json');
-    var config = JSON.parse(browser.getText('pre')).json;
-    assert.equal(config.mongoDbDatabase, 'openwhyd_test');
-    browser.url(URL_PREFIX + '/login?action=logout');
+before(function(done) {
+    console.log('[before] connecting to db...');
+	mongodb.init(function(err, db) {
+        var self = this;
+        console.log('[before] populating db...');
+
+        function runDbInitScripts(callback) {
+            async.eachSeries(DB_INIT_SCRIPTS, function(initScript, nextScript){
+                console.log('[before] Applying db init script:', initScript, '...');
+                self.runShellScript(fs.readFileSync(initScript), function(err) {
+                    if (err) throw err;
+                    nextScript();
+                });
+            }, callback);
+        }
+
+        runDbInitScripts(function(err, res){
+            server.start(function(err){
+                if (err) throw err;
+                console.log('[before] making sure that openwhyd/whydjs server is tested against the test database');
+                browser.url(URL_PREFIX + `/login?action=login&email=${encodeURIComponent(ADMIN_USER.email)}&md5=${ADMIN_USER.md5}`);
+                browser.url(URL_PREFIX + '/admin/config/config.json');
+                var config = JSON.parse(browser.getText('pre')).json;
+                console.log('[before] => running on database ' + config.mongoDbDatabase); 
+                // TODO: the console log above does not show => find a way to run these before() tests in real callback style
+                if (config.mongoDbDatabase !== 'openwhyd_test') {
+                    done('running on database ' + config.mongoDbDatabase);
+                    return;
+                }
+                browser.url(URL_PREFIX + '/login?action=logout');
+
+                console.log('[before] clearning database...');
+                server.stop();
+                //var mongodb = this;
+                db.dropDatabase(function(err) {
+                    if (err) throw err;
+                    //console.log('[before] re-populating db...');
+                    //runDbInitScripts(function(err, res){
+                    //    if (err) throw err;
+                    server.start(function(err){
+                        if (err) throw err;
+                        console.log('[before] database is ready for testing :-)')
+                        done();
+                    });
+                    //});
+                });
+            });
+        });
+	});
 });
 
 // reference scenario: https://www.youtube.com/watch?v=aZT8VlTV1YY

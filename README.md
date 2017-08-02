@@ -57,16 +57,12 @@ Thank you for your understanding! ^^
 ## Setup (with Docker, for development environment)
 
 * Instal Docker Client via https://www.docker.com/community-edition and start it
-* Build and Launch all processes `docker-compose up` (ignore the error, keep the container running)
-* Initialize MongoDB database (do it one-time only) : `docker-compose exec mongo mongo openwhyd_data data/initdb.js data/initdb_team.js && docker-compose restart web`
+* Build and Launch all processes `docker-compose up`
 * Open [http://localhost:8080](http://localhost:8080) (or `WHYD_URL_PREFIX`)
-
-* Then after first initialization, to launch all processes `docker-compose up`
 
 ## Setup (manual)
 * Make sure that MongoDB is running
 * Make sure that the necessary environment variables are defined (see below)
-* Make sure that the database is initialized (by running `mongo openwhyd_data whydDB/initdb.js` and `mongo openwhyd_data initdb_team.js`, after updaing the `email` and `pwd` fields for the admin account)
 * Make sure that dependencies are installed (`npm install`)
 * Make sure that Apple Push Notification Service (APNS) certificates are copied in `/whydJS/config/apns` with the following filenames: `aps_dev.cert.pem`, `aps_dev.key.pem`, `aps_prod.cert.pem`, `aps_prod.key.pem`, and `Dev_Whyd.mobileprovision`. (you can test them using `test_apns.sh`)
 
@@ -86,10 +82,6 @@ npm run test-unit
 Run all tests, including acceptance tests (webdriver.io-based):
 
 ```bash
-# reset the test database
-mongo openwhyd_test --eval "db.dropDatabase();"
-mongo openwhyd_test whydDB/initdb.js
-mongo openwhyd_test whydDB/initdb_team.js
 # prepare the test environment
 cd whydJS
 source env-vars-testing.sh

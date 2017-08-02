@@ -5,8 +5,8 @@ var colors = require('colors');
 var mongodb = require('mongodb');
 
 var DB_INIT_SCRIPTS = [
-	'../whydDB/initdb.js',
-	'../whydDB/initdb_team.js',
+	'./config/initdb.js',
+	//'./config/initdb_team.js', // creates an admin user => should not be run on production!
 ];
 
 function makeColorConsole(fct, color){
