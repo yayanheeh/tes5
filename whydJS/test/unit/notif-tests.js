@@ -1,40 +1,15 @@
-process.appParams = {
-  urlPrefix: '',
-  mongoDbHost: process.env['MONGODB_HOST'] || 'localhost',
-  mongoDbPort: process.env['MONGODB_PORT'] || mongodb.Connection.DEFAULT_PORT, // 27017
-  mongoDbAuthUser: process.env['MONGODB_USER'],
-  mongoDbAuthPassword: process.env['MONGODB_PASS'],
-  mongoDbDatabase: process.env['MONGODB_DATABASE'], // || "openwhyd_data",
-};  
-
+var initDb = require("../db-init.js").initDb;
 var mongodb = require("../../app/models/mongodb.js");
 var notifModel = require("../../app/models/notif.js");
 
 var db = mongodb.collections;
 var ObjectId = mongodb.ObjectId;
 
-function initDb(cb) {
-  mongodb.init(function(err, db) {
-    if (err) throw err;
-    var mongodbInstance = this;
-    var initScript = './config/initdb.js';
-    console.log('Applying db init script:', initScript, '...');
-    mongodbInstance.runShellScript(require("fs").readFileSync(initScript), function(err) {
-      if (err) throw err;
-      mongodbInstance.cacheCollections(function() {
-        mongodb.cacheUsers(cb);
-      });
-    });
-  });
-}
-
 describe('notif', function () {
 
   this.timeout(5000);  
 
-  it('initiatialises db', function async(done) {
-    initDb(done);
-  });
+  it('initiatialises db', initDb);
 
   var p = {
     loggedUser: require('../fixtures.js').ADMIN_USER, //request.getUser(),
