@@ -10,6 +10,7 @@ var openwhydVersion = require('./package.json').version;
 
 // initialize error monitoring
 var rollbar;
+var bugsnag;
 if (process.env.NODE_ENV === "production") {
 	var Rollbar = require("rollbar");
 	rollbar = new Rollbar({
@@ -17,7 +18,14 @@ if (process.env.NODE_ENV === "production") {
 		captureUncaught: true,
 		captureUnhandledRejections: true
 	});
-	rollbar.log("Starting Openwhyd v" + openwhydVersion + ' ...');
+	//rollbar.log("Starting Openwhyd v" + openwhydVersion + ' ...');
+	/*
+	// considered bugsnag, because they offer free plans for open source projects
+	// ...but it crashes the server on handled Algolia "Method not allowed" errors!
+	bugsnag = require("bugsnag");
+	bugsnag.register("1806e735e723139687b08d63d9597e68");
+	//bugsnag.notify(new Error('test'));
+	*/
 }
 
 var DB_INIT_SCRIPTS = [
@@ -45,7 +53,11 @@ function makeErrorLog(fct, type){
 		fct("===\n" + (new Date()).toUTCString() + ", " + type + " (concise trace)\n" + conciseTrace());
 		fct.apply(console, arguments);
 		if (rollbar && (type === 'Warning' || type === 'Error')) {
-			rollbar[type.toLowerCase()](Array.prototype.join.call(arguments, " "));
+			//rollbar[type.toLowerCase()](Array.prototype.join.call(arguments, " "));
+			//rollbar[type.toLowerCase()].apply(rollbar, arguments);
+		}
+		if (bugsnag) {
+			bugsnag.notify(Array.prototype.join.call(arguments, " "));
 		}
 	}
 }
