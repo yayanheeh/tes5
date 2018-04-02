@@ -75,7 +75,7 @@ exports.fetchPosts = function (query, params, options, handler) {
 			console.error(err);
 		cursor.toArray(function(err, results) {
 			if (err)
-				console.error("model.fetchPosts ERROR on query", query, "with params", params, ":", err);
+				console.error("model.fetchPosts ERROR on query", query, "with params", params, ":", err.toString());
 			results = results || [];
 			processPosts(results);
 			console.log("=> fetched " + results.length + " posts");

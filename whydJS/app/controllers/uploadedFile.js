@@ -70,7 +70,7 @@ exports.deleteFile = function (filepath) {
 		fs.unlinkSync(filepath);
 	}
 	catch (e) {
-		console.log(e, e.stack);
+		console.error("error in uploadedFile", e.toString());
 	}
 }
 

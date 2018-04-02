@@ -18,7 +18,7 @@ var emailCheck = /^[a-z0-9\u007F-\uffff!#$%&'*+\/=?^_`{|}~-]+(?:\.[a-z0-9\u007F-
 exports.validate = function(email) {
 	if (!email) return email;
 	if (typeof email != "string") {
-		console.error("(malicious?) non-string email:", email, new Error().stack);
+		console.error("(malicious?) non-string email:", email);
 		return "";
 	}
 	return emailCheck.test(email);
@@ -27,7 +27,7 @@ exports.validate = function(email) {
 exports.normalize = function(email) {
 	if (!email) return email;
 	if (typeof email != "string") {
-		console.error("(malicious?) non-string email:", email, new Error().stack);
+		console.error("(malicious?) non-string email:", email);
 		return "";
 	}
 	return email.trim().toLowerCase();

@@ -365,7 +365,7 @@ function _checkPublicFiles(self, request, requestParams, response) {
 }
 
 function _processError(self, e, response) {
-  console.log("error", e.stack); // AJ
+  console.error("error in Application.js", e.toString()); // AJ
   response.end(e.stack);
 }
 
@@ -457,8 +457,7 @@ function loadModules(dir, modulesObj, lastModifyDates, type) {
         }
 		
 		} catch (e) {
-			console.log(e);
-			console.log(e.stack);
+			console.error("error in Application.js", e.toString());
 		}
       }
     } else {
